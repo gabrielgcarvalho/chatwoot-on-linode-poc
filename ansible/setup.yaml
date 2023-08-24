@@ -1,0 +1,41 @@
+---
+- name: Configure chatwoot
+  hosts: all
+  become: true
+
+  tasks:
+  - name: Update cache
+    apt:
+      update_cache: yes
+
+  - name: Install packages
+    apt:
+      name: [gnupg2, nginx]
+      state: present
+
+  - name: Install Docker and docker-compose
+    shell: |
+      curl -fsSL https://get.docker.com -o get-docker.sh
+      sh get-docker.sh
+      apt install docker-compose-plugin
+    args:
+      chdir: /tmp
+
+  - name: Copy Nginx config
+    copy:
+      src: nginx/chatwoot.conf
+      dest: /etc/nginx/sites-available/chatwoot.conf
+
+  - name: Enable site and Restart Nginx
+    shell: |
+      systemctl reload nginx
+
+  - name: Copy docker-compose.yaml and .env variables
+    copy:
+      src: ../chatwoot/
+      dest: .
+
+  - name: Up chatwoot
+    shell: |
+      docker compose run --rm rails bundle exec rails db:chatwoot_prepare
+      docker compose up -d
